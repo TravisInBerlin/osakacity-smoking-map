@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大阪市 喫煙所ナビ</title>
+    <style>
+        /* 見た目を整える部分（CSS） */
+        body { font-family: sans-serif; background: #f4f4f4; margin: 0; padding: 15px; color: #333; line-height: 1.6; }
+        h1 { font-size: 22px; text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        
+        .btn-main {
+            display: block; width: 100%; background: #007bff; color: white; border: none;
+            padding: 25px; font-size: 22px; font-weight: bold; border-radius: 15px; cursor: pointer;
+            margin-bottom: 20px; box-shadow: 0 6px #0056b3;
+        }
+        .btn-main:active { margin-top: 6px; box-shadow: none; }
+
+        #status { 
+            text-align: center; margin-bottom: 20px; padding: 10px;
+            background: #fff3cd; border-radius: 8px; font-weight: bold; font-size: 14px;
+        }
+
+        .spot-card {
+            background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;
+            border-left: 10px solid #28a745; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .spot-name { font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #333; }
+        .spot-dist { font-size: 18px; color: #e67e22; font-weight: bold; margin-bottom: 15px; }
+        
+        .btn-go {
+            display: block; text-align: center; background: #2c3e50; color: white; 
+            text-decoration: none; padding: 15px; border-radius: 10px; font-weight: bold; font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🚬 大阪市 喫煙所ナビ</h1>
+    
+    <button class="btn-main" onclick="findMe()">ここから近い順にさがす</button>
+    
+    <div id="status">上のボタンを押すと、近くの喫煙所を表示します</div>
+    
+    <div id="result-list"></div>
+
+    <script>
+        /* 動きを作る部分（JavaScript） */
+
+        // 大阪市の主な指定喫煙所データ
+        const locations = [
+            { name: "JR大阪駅東側喫煙所", lat: 34.7024, lng: 135.4959 },
+            { name: "大阪駅南側（サウスゲートビル付近）", lat: 34.7013, lng: 135.4954 },
+            { name: "阪急梅田駅1階喫煙所", lat: 34.7055, lng: 135.4983 },
+            { name: "JR天王寺駅北口喫煙所", lat: 34.6472, lng: 135.5139 },
+            { name: "近鉄あべの橋駅（北側）", lat: 34.6462, lng: 135.5140 },
+            { name: "難波駅前（御堂筋側）", lat: 34.6647, lng: 135.5019 },
+            { name: "南海難波駅（なんばパークス付近）", lat: 34.6625, lng: 135.5010 },
+            { name: "京橋駅連絡通路喫煙所", lat: 34.6963, lng: 135.5337 },
+            { name: "淀屋橋駅（市役所付近）", lat: 34.6937, lng: 135.5016 },
+            { name: "大阪メトロ 本町駅（9番出口付近）", lat: 34.6823, lng: 135.5002 }
+        ];
+
+        function findMe() {
+            const status = document.getElementById('status');
+            const list = document.getElementById('result-list');
+            list.innerHTML = "";
+            
+            if (!navigator.geolocation) {
+                status.innerHTML = "❌ お使いのスマホでは使えません";
+                return;
+            }
+
+            status.innerHTML = "⏳ 今いる場所を確認中...<br>「許可」が出たらOKを押してください";
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    status.innerHTML = "✅ 近い順に表示しました";
+
+                    // 距離計算と並び替え
+                    const sorted = locations.map(spot => {
+                        const dist = getDistance(userLat, userLng, spot.lat, spot.lng);
+                        return { ...spot, dist };
+                    }).sort((a, b) => a.dist - b.dist);
+
+                    // 結果を表示
+                    sorted.forEach(spot => {
+                        const div = document.createElement('div');
+                        div.className = 'spot-card';
+                        div.innerHTML = `
+                            <div class="spot-name">${spot.name}</div>
+                            <div class="spot-dist">ここから約 ${(spot.dist / 1000).toFixed(2)} km</div>
+                            <a class="btn-go" href="https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}" target="_blank">ここへ行く（地図が開く）</a>
+                        `;
+                        list.appendChild(div);
+                    });
+                },
+                (error) => {
+                    status.style.color = "red";
+                    status.innerHTML = "<strong>位置情報が許可されていません</strong><br>ブラウザの設定で位置情報を「許可」にしてから、ページを読み込み直してください。";
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        // 2点間の距離(m)を計算する数学的な処理
+        function getDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+    </script>
+</body>
+</html>
